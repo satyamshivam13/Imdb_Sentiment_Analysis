@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title_suffix %} - Result{% endblock %}
+
+{% block content %}
+      <main class="mx-auto grid max-w-6xl gap-8 px-6 pb-16 pt-10 lg:grid-cols-2">
+        <section class="glass rounded-3xl p-6 md:p-8">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display text-2xl font-semibold">
+              Sentiment Result
+            </h2>
+            <span class="text-xs text-slate-400">Live Prediction</span>
+          </div>
+
+          <div class="mt-6 grid gap-4">
+            {% if result.value == 1 %}
+            <div
+              class="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-5 py-4 text-emerald-200"
+            >
+              <p class="text-xs uppercase tracking-[0.35em] text-emerald-200/70">
+                Positive Review
+              </p>
+              <h3 class="mt-2 text-2xl font-semibold">Movie feels strong.</h3>
+            </div>
+            {% else %}
+            <div
+              class="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-5 py-4 text-rose-200"
+            >
+              <p class="text-xs uppercase tracking-[0.35em] text-rose-200/70">
+                Negative Review
+              </p>
+              <h3 class="mt-2 text-2xl font-semibold">Movie feels weak.</h3>
+            </div>
+            {% endif %}
+
+            {% if confidence_pct %}
+            <div class="text-sm text-slate-300">
+              Confidence:
+              <span class="font-semibold text-slate-100">
+                {{ confidence_pct }}
+              </span>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mt-6">
+            <p class="text-xs uppercase tracking-[0.35em] text-slate-400">
+              Sentiment Meter
+            </p>
+            <div
+              class="meter mt-3"
+              style="--confidence: {{ confidence_percent }};"
+            >
+              <div
+                class="meter-fill {% if result.value == 1 %}is-positive{% else %}is-negative{% endif %}"
+              ></div>
+            </div>
+          </div>
+
+          <div class="mt-8">
+            <a
+              href="{{ url_for('home') }}"
+              class="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/40 hover:bg-white/10"
+            >
+              Try another review
+            </a>
+          </div>
+        </section>
+
+        <section class="grid gap-6">
+          <div class="glass rounded-3xl p-6 md:p-8">
+            <h3 class="font-display text-xl font-semibold">Your Review</h3>
+            <p class="mt-4 text-sm leading-relaxed text-slate-200">
+              {{ review }}
+            </p>
+          </div>
+
+          <div class="glass rounded-3xl p-6 md:p-8">
+            <h3 class="font-display text-xl font-semibold">API Example</h3>
+            <div class="mt-4 rounded-2xl bg-black/30 p-4 text-xs text-slate-200">
+              <div>POST /api/predict</div>
+              <div class="mt-2">{"review": "A vivid story with heartfelt performances."}</div>
+            </div>
+          </div>
+        </section>
+      </main>
+{% endblock %}

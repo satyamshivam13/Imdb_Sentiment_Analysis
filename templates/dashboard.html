@@ -125,12 +125,27 @@
 {% endblock %}
 
 {% block scripts %}
+<script id="dashboard-config" type="application/json">
+  {{ {
+    "distributionUrl": url_for('dashboard_distribution') ~ dashboard_query_string,
+    "trendUrl": url_for('dashboard_trend') ~ dashboard_query_string,
+    "empty": dashboard_empty
+  } | tojson }}
+</script>
 <script>
-  window.dashboardConfig = {
-    distributionUrl: "{{ url_for('dashboard_distribution') }}{{ dashboard_query_string }}",
-    trendUrl: "{{ url_for('dashboard_trend') }}{{ dashboard_query_string }}",
-    empty: {{ 'true' if dashboard_empty else 'false' }}
-  };
+  (function () {
+    var configEl = document.getElementById("dashboard-config");
+    if (!configEl) {
+      window.dashboardConfig = {};
+      return;
+    }
+
+    try {
+      window.dashboardConfig = JSON.parse(configEl.textContent || "{}");
+    } catch (error) {
+      window.dashboardConfig = {};
+    }
+  })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
