@@ -1,9 +1,9 @@
 ---
 phase: 02
 slug: batch-csv-analysis-pipeline
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: ready
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-02
 updated: 2026-04-02
 ---
@@ -39,17 +39,17 @@ updated: 2026-04-02
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 01 | 1 | BATCH-01,BATCH-02 | unit | `python -m pytest tests/test_csv_validation.py -q` | no (W0) | pending |
-| 02-02-01 | 02 | 2 | BATCH-03 | service | `python -m pytest tests/test_batch_service.py -q` | no (W0) | pending |
-| 02-03-01 | 03 | 3 | BATCH-04,BATCH-05 | integration | `python -m pytest tests/test_batch_integration.py -q` | no (W0) | pending |
+| 02-01-01 | 01 | 1 | BATCH-01,BATCH-02 | unit | `python -m pytest tests/test_csv_validation.py -q` | yes | green |
+| 02-02-01 | 02 | 2 | BATCH-03 | service | `python -m pytest tests/test_batch_service.py -q` | yes | green |
+| 02-03-01 | 03 | 3 | BATCH-04,BATCH-05 | integration | `python -m pytest tests/test_batch_integration.py -q` | yes | green |
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `tests/test_csv_validation.py` - schema and row validation coverage
-- [ ] `tests/test_batch_service.py` - scoring + metrics + persistence behavior
-- [ ] `tests/test_batch_integration.py` - endpoint upload/export integration checks
+- [x] `tests/test_csv_validation.py` - schema and row validation coverage
+- [x] `tests/test_batch_service.py` - scoring + metrics + persistence behavior
+- [x] `tests/test_batch_integration.py` - endpoint upload/export integration checks
 
 ---
 
@@ -63,10 +63,10 @@ updated: 2026-04-02
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify or explicit Wave 0 dependencies
-- [ ] Sampling continuity preserved
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90s
-- [ ] `nyquist_compliant: true` set in frontmatter after execution verification
+- [x] All tasks have automated verify or explicit Wave 0 dependencies
+- [x] Sampling continuity preserved
+- [x] No watch-mode flags
+- [x] Feedback latency < 90s
+- [x] `nyquist_compliant: true` set in frontmatter after execution verification
 
-**Approval:** pending
+**Approval:** approved 2026-04-02

@@ -291,7 +291,7 @@ def batch_analyze_post():
         )
 
     analyzed = batch_service.analyze_rows(
-        parsed["rows"], app.config["MAX_REVIEW_CHARS"]
+        parsed["rows"], predict_sentiment, app.config["MAX_REVIEW_CHARS"]
     )
     issues = analyzed["issues"]
     scored_rows = analyzed["scored_rows"]
@@ -355,7 +355,7 @@ def api_batch_analyze():
         )
 
     analyzed = batch_service.analyze_rows(
-        parsed["rows"], app.config["MAX_REVIEW_CHARS"]
+        parsed["rows"], predict_sentiment, app.config["MAX_REVIEW_CHARS"]
     )
     issues = analyzed["issues"]
     scored_rows = analyzed["scored_rows"]
