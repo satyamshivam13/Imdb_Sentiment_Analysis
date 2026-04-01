@@ -25,7 +25,7 @@ This roadmap evolves the current sentiment predictor into an analytics-focused p
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Introduce storage layer and schema for analysis events
+- [x] 01-01: Introduce storage layer and schema for analysis events
 - [ ] 01-02: Add write/read integration for prediction endpoints
 - [ ] 01-03: Add foundational tests and data integrity guards
 

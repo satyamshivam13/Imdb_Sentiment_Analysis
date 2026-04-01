@@ -27,7 +27,7 @@
 
 ### Review History
 
-- [ ] **HIST-01**: System stores analyzed review events with timestamp, sentiment, and confidence.
+- [x] **HIST-01**: System stores analyzed review events with timestamp, sentiment, and confidence.
 - [ ] **HIST-02**: User can view prior analysis history in chronological order.
 - [ ] **HIST-03**: User can clear local history data from the interface.
 
@@ -74,7 +74,7 @@
 | BATCH-03 | Phase 2 | Pending |
 | BATCH-04 | Phase 2 | Pending |
 | BATCH-05 | Phase 2 | Pending |
-| HIST-01 | Phase 1 | Pending |
+| HIST-01 | Phase 1 | Complete |
 | HIST-02 | Phase 5 | Pending |
 | HIST-03 | Phase 5 | Pending |
 
