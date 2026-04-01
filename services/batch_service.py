@@ -164,3 +164,41 @@ class BatchService:
             )
 
         return {"valid_rows": valid_rows, "issues": issues}
+
+    def analyze_rows(self, rows, predict_fn, max_chars: int) -> dict[str, Any]:
+        validation = self.validate_rows(rows, max_chars)
+        valid_rows = validation["valid_rows"]
+        issues = list(validation["issues"])
+        scored_rows: list[dict[str, Any]] = []
+
+        for row in valid_rows:
+            review_text = row["review"]
+            try:
+                prediction = predict_fn(review_text)
+            except Exception as exc:
+                issues.append(
+                    {
+                        "row": row["row_index"],
+                        "field": "prediction",
+                        "reason": f"Prediction failed: {type(exc).__name__}",
+                    }
+                )
+                continue
+
+            scored_rows.append(
+                {
+                    "row_index": row["row_index"],
+                    "review": review_text,
+                    "sentiment_label": prediction["label"],
+                    "sentiment_value": int(prediction["value"]),
+                    "confidence": prediction["confidence"],
+                    "original_row": dict(row["original_row"]),
+                }
+            )
+
+        return {
+            "valid_rows": len(scored_rows),
+            "invalid_rows": len(issues),
+            "scored_rows": scored_rows,
+            "issues": issues,
+        }
