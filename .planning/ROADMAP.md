@@ -41,8 +41,8 @@ Plans:
 
 Plans:
 - [x] 02-01: Build CSV upload and schema validation flow
-- [ ] 02-02: Implement batch scoring pipeline with row-level outputs
-- [ ] 02-03: Add batch report summary and export endpoint/UI
+- [x] 02-02: Implement batch scoring pipeline with row-level outputs
+- [x] 02-03: Add batch report summary and export endpoint/UI
 
 ### Phase 3: Dashboard Visualization Layer
 **Goal**: Deliver dashboard visuals that communicate current sentiment landscape and trends over time.
