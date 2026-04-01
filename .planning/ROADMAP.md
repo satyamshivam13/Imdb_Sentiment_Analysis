@@ -10,7 +10,7 @@ This roadmap evolves the current sentiment predictor into an analytics-focused p
 - [x] **Phase 2: Batch CSV Analysis Pipeline** - Add validated CSV upload, multi-row scoring, and export/report outputs. (completed 2026-04-01)
 - [x] **Phase 3: Dashboard Visualization Layer** - Deliver stakeholder-facing sentiment distribution and trend dashboards. (completed 2026-04-02)
 - [x] **Phase 4: Model Metrics Observatory** - Expose evaluation metrics, confusion matrix, and model metadata. (completed 2026-04-02)
-- [ ] **Phase 5: History Experience Hardening** - Finalize history browsing/clearing UX and reliability/performance polish.
+- [x] **Phase 5: History Experience Hardening** - Finalize history browsing/clearing UX and reliability/performance polish. (completed 2026-04-02)
 
 ## Phase Details
 
@@ -84,8 +84,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Build paginated history browse page and retrieval support
-- [ ] 05-02: Add clear-history action and validation scaffolding
+- [x] 05-01: Build paginated history browse page and retrieval support
+- [x] 05-02: Add clear-history action and validation scaffolding
 
 ## Progress
 
@@ -98,6 +98,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Batch CSV Analysis Pipeline | 3/3 | Complete    | 2026-04-01 |
 | 3. Dashboard Visualization Layer | 3/3 | Complete | 2026-04-02 |
 | 4. Model Metrics Observatory | 2/2 | Complete | 2026-04-02 |
-| 5. History Experience Hardening | 0/2 | Not started | - |
+| 5. History Experience Hardening | 2/2 | Complete | 2026-04-02 |
 
 

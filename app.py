@@ -1,12 +1,14 @@
 from collections import OrderedDict
+from datetime import date, datetime, timedelta, time, timezone
 from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 from pathlib import Path
 import logging
 import os
 import pickle
+from urllib.parse import urlencode
 from uuid import uuid4
 
-from services import BatchService, HistoryService
+from services import BatchService, HistoryService, MetricsArtifactError, MetricsService
 from storage import HistoryStore
 
 
@@ -20,6 +22,7 @@ HISTORY_DB_PATH = Path(
 ).resolve()
 ENABLE_SWAGGER = os.getenv("ENABLE_SWAGGER", "0") == "1"
 MAX_BATCH_EXPORTS = int(os.getenv("MAX_BATCH_EXPORTS", "20"))
+HISTORY_PAGE_SIZE = int(os.getenv("HISTORY_PAGE_SIZE", "20"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("imdb-sentiment-app")
@@ -68,6 +71,7 @@ except Exception as exc:
     logger.error("History schema init failed: %s", exc)
 history_service = HistoryService(history_store)
 batch_service = BatchService()
+metrics_service = MetricsService()
 batch_export_cache: OrderedDict[str, dict[str, str]] = OrderedDict()
 
 
@@ -102,6 +106,7 @@ def validate_review(review: str):
     return cleaned, None
 
 
+
 def predict_sentiment(review: str):
     vector = vectorizer.transform([review])
     prediction = int(model.predict(vector)[0])
@@ -111,6 +116,179 @@ def predict_sentiment(review: str):
         confidence = float(model.predict_proba(vector)[0][prediction])
     return {"value": prediction, "label": label, "confidence": confidence}
 
+DASHBOARD_RANGE_PRESETS = OrderedDict(
+    [
+        ("7d", "Last 7 days"),
+        ("30d", "Last 30 days"),
+        ("90d", "Last 90 days"),
+        ("all", "All time"),
+    ]
+)
+DASHBOARD_RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+DASHBOARD_EMPTY_MESSAGE = (
+    "Try a broader date range, or add more reviews through the prediction and batch flows."
+)
+
+
+def _dashboard_date(value: str | None):
+    if not value:
+        return None
+    return date.fromisoformat(value)
+
+
+
+def _dashboard_start_ts(selected_date):
+    return datetime.combine(selected_date, time.min, tzinfo=timezone.utc).isoformat()
+
+
+
+def _dashboard_end_ts(selected_date):
+    return datetime.combine(
+        selected_date + timedelta(days=1), time.min, tzinfo=timezone.utc
+    ).isoformat()
+
+
+
+def _dashboard_query_string(range_key: str, start_date=None, end_date=None):
+    params = [("range", range_key)]
+    if start_date is not None:
+        params.append(("start", start_date.isoformat()))
+    if end_date is not None:
+        params.append(("end", end_date.isoformat()))
+    return f"?{urlencode(params)}"
+
+
+
+def _resolve_dashboard_window(range_key: str | None = None, start_value: str | None = None, end_value: str | None = None):
+    normalized_key = (range_key or "30d").strip().lower()
+    start_date = _dashboard_date(start_value)
+    end_date = _dashboard_date(end_value)
+    custom_requested = normalized_key == "custom" or start_date is not None or end_date is not None
+
+    if normalized_key == "all" and not custom_requested:
+        return {
+            "range_key": "all",
+            "start_date": None,
+            "end_date": None,
+            "start_ts": None,
+            "end_ts": None,
+            "query_string": _dashboard_query_string("all"),
+        }
+
+    if custom_requested:
+        if start_date is None or end_date is None:
+            raise ValueError("Please provide both a start date and an end date.")
+        if end_date < start_date:
+            raise ValueError("End date must be on or after the start date.")
+        return {
+            "range_key": "custom",
+            "start_date": start_date,
+            "end_date": end_date,
+            "start_ts": _dashboard_start_ts(start_date),
+            "end_ts": _dashboard_end_ts(end_date),
+            "query_string": _dashboard_query_string("custom", start_date, end_date),
+        }
+
+    days = DASHBOARD_RANGE_DAYS.get(normalized_key, DASHBOARD_RANGE_DAYS["30d"])
+    normalized_key = normalized_key if normalized_key in DASHBOARD_RANGE_DAYS else "30d"
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=days - 1)
+    return {
+        "range_key": normalized_key,
+        "start_date": start_date,
+        "end_date": end_date,
+        "start_ts": _dashboard_start_ts(start_date),
+        "end_ts": _dashboard_end_ts(end_date),
+        "query_string": _dashboard_query_string(normalized_key, start_date, end_date),
+    }
+
+
+
+def _normalize_distribution_rows(count_rows):
+    counts = {"Positive": 0, "Negative": 0}
+    for row in count_rows:
+        label = str(row.get("sentiment_label", "")).title()
+        counts[label] = int(row.get("total", 0))
+    total = counts["Positive"] + counts["Negative"]
+    positive_pct = round((counts["Positive"] / total) * 100, 1) if total else 0
+    negative_pct = round((counts["Negative"] / total) * 100, 1) if total else 0
+    return {
+        "total": total,
+        "positive": {"count": counts["Positive"], "percentage": positive_pct},
+        "negative": {"count": counts["Negative"], "percentage": negative_pct},
+        "empty": total == 0,
+        "empty_message": DASHBOARD_EMPTY_MESSAGE,
+    }
+
+
+
+def _trend_day_labels(start_date, end_date, trend_rows):
+    normalized_rows = {}
+    for row in trend_rows:
+        day_key = str(row.get("day", ""))
+        label = str(row.get("sentiment_label", "")).title()
+        if day_key not in normalized_rows:
+            normalized_rows[day_key] = {"Positive": 0, "Negative": 0}
+        if label in normalized_rows[day_key]:
+            normalized_rows[day_key][label] = int(row.get("total", 0))
+
+    if start_date is None or end_date is None:
+        if not normalized_rows:
+            return [], [], []
+        ordered_days = sorted(normalized_rows)
+        labels = ordered_days
+        positive = [normalized_rows[day]["Positive"] for day in ordered_days]
+        negative = [normalized_rows[day]["Negative"] for day in ordered_days]
+        return labels, positive, negative
+
+    labels = []
+    positive = []
+    negative = []
+    current_day = start_date
+    while current_day <= end_date:
+        day_key = current_day.isoformat()
+        bucket = normalized_rows.get(day_key, {"Positive": 0, "Negative": 0})
+        labels.append(day_key)
+        positive.append(bucket["Positive"])
+        negative.append(bucket["Negative"])
+        current_day += timedelta(days=1)
+    return labels, positive, negative
+
+
+
+def _dashboard_payloads(range_key: str | None = None, start_value: str | None = None, end_value: str | None = None):
+    window = _resolve_dashboard_window(range_key, start_value, end_value)
+    count_rows = history_store.count_by_sentiment(window["start_ts"], window["end_ts"])
+    trend_rows = history_store.trend_by_day(window["start_ts"], window["end_ts"])
+    distribution = _normalize_distribution_rows(count_rows)
+    labels, positive_series, negative_series = _trend_day_labels(
+        window["start_date"], window["end_date"], trend_rows
+    )
+    trend = {
+        "labels": labels,
+        "series": {"positive": positive_series, "negative": negative_series},
+        "empty": not labels,
+        "empty_message": DASHBOARD_EMPTY_MESSAGE,
+    }
+    return window, distribution, trend
+
+
+
+def _dashboard_template_context(range_key: str | None = None, start_value: str | None = None, end_value: str | None = None):
+    window, distribution, trend = _dashboard_payloads(range_key, start_value, end_value)
+    return base_context(
+        dashboard_presets=list(DASHBOARD_RANGE_PRESETS.items()),
+        dashboard_range_key=window["range_key"],
+        dashboard_start_date=window["start_date"].isoformat() if window["start_date"] else "",
+        dashboard_end_date=window["end_date"].isoformat() if window["end_date"] else "",
+        dashboard_query_string=window["query_string"],
+        dashboard_distribution=distribution,
+        dashboard_trend=trend,
+        dashboard_empty=distribution["empty"] or trend["empty"],
+        dashboard_empty_message=DASHBOARD_EMPTY_MESSAGE,
+    )
+
+
 
 def wants_json_response():
     if request.path.startswith("/api/"):
@@ -119,47 +297,117 @@ def wants_json_response():
     return best == "application/json"
 
 
-def _batch_context(
-    *,
-    batch_error: str | None = None,
-    batch_status: str | None = None,
-    batch_issues: list[dict] | None = None,
-    batch_file_name: str = "",
-    batch_total_rows: int | None = None,
-    batch_valid_rows: int | None = None,
-):
-    return base_context(
-        review="",
-        error=None,
-        batch_error=batch_error,
-        batch_status=batch_status,
-        batch_issues=batch_issues or [],
-        batch_file_name=batch_file_name,
-        batch_total_rows=batch_total_rows,
-        batch_valid_rows=batch_valid_rows,
+@app.get("/dashboard")
+def dashboard():
+    range_key = request.args.get("range", "30d")
+    start_value = request.args.get("start")
+    end_value = request.args.get("end")
+    try:
+        context = _dashboard_template_context(range_key, start_value, end_value)
+        context["dashboard_error"] = None
+    except ValueError as exc:
+        logger.warning("Dashboard range validation failed: %s", exc)
+        context = _dashboard_template_context("30d")
+        context["dashboard_error"] = str(exc)
+    return render_template("dashboard.html", **context)
+
+
+@app.get("/api/dashboard/distribution")
+def dashboard_distribution():
+    range_key = request.args.get("range", "30d")
+    start_value = request.args.get("start")
+    end_value = request.args.get("end")
+    try:
+        window, distribution, _ = _dashboard_payloads(range_key, start_value, end_value)
+    except ValueError as exc:
+        return jsonify({"error": "invalid_date_range", "detail": str(exc)}), 400
+    response = {
+        "range_key": window["range_key"],
+        "start": window["start_date"].isoformat() if window["start_date"] else None,
+        "end": window["end_date"].isoformat() if window["end_date"] else None,
+        **distribution,
+    }
+    return jsonify(response)
+
+
+@app.get("/api/dashboard/trend")
+def dashboard_trend():
+    range_key = request.args.get("range", "30d")
+    start_value = request.args.get("start")
+    end_value = request.args.get("end")
+    try:
+        window, _, trend = _dashboard_payloads(range_key, start_value, end_value)
+    except ValueError as exc:
+        return jsonify({"error": "invalid_date_range", "detail": str(exc)}), 400
+    response = {
+        "range_key": window["range_key"],
+        "start": window["start_date"].isoformat() if window["start_date"] else None,
+        "end": window["end_date"].isoformat() if window["end_date"] else None,
+        **trend,
+    }
+    return jsonify(response)
+
+
+@app.get("/api/metrics/summary")
+def metrics_summary():
+    try:
+        payload = metrics_service.load_metrics()
+    except MetricsArtifactError as exc:
+        logger.warning("Metrics summary unavailable: %s", exc)
+        return jsonify({"error": "metrics_unavailable", "detail": str(exc)}), 503
+    return jsonify(payload)
+
+
+@app.get("/metrics")
+def metrics_page():
+    try:
+        metrics = metrics_service.load_metrics()
+        metrics_error = None
+    except MetricsArtifactError as exc:
+        logger.warning("Metrics page unavailable: %s", exc)
+        metrics = None
+        metrics_error = str(exc)
+    return render_template(
+        "metrics.html",
+        **base_context(metrics=metrics, metrics_error=metrics_error),
     )
 
 
-def _persist_batch_rows(scored_rows: list[dict]) -> None:
-    for item in scored_rows:
-        try:
-            history_service.append_prediction_event(
-                review_text=item["review"],
-                label=item["sentiment_label"],
-                value=item["sentiment_value"],
-                confidence=item["confidence"],
-                source="batch",
-            )
-        except Exception as exc:
-            logger.warning("History persistence failed for batch row %s: %s", item, exc)
+def _parse_positive_int(value: str | None, default: int = 1) -> int:
+    try:
+        parsed_value = int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+    return max(1, parsed_value)
 
 
-def _store_batch_export(csv_payload: str, filename: str) -> str:
-    export_id = uuid4().hex
-    batch_export_cache[export_id] = {"content": csv_payload, "filename": filename}
-    while len(batch_export_cache) > MAX_BATCH_EXPORTS:
-        batch_export_cache.popitem(last=False)
-    return export_id
+def _history_page_context(page_value: int):
+    total_events = history_store.count_events()
+    total_pages = max(1, (total_events + HISTORY_PAGE_SIZE - 1) // HISTORY_PAGE_SIZE)
+    page = min(max(1, page_value), total_pages)
+    offset = (page - 1) * HISTORY_PAGE_SIZE
+    events = history_store.latest_events(limit=HISTORY_PAGE_SIZE, offset=offset)
+    return base_context(
+        history_events=events,
+        history_page=page,
+        history_total_pages=total_pages,
+        history_total_events=total_events,
+        history_page_size=HISTORY_PAGE_SIZE,
+        history_empty=total_events == 0,
+        history_prev_page=page - 1 if page > 1 else None,
+        history_next_page=page + 1 if page < total_pages else None,
+    )
+
+
+@app.get("/history")
+def history():
+    page_value = _parse_positive_int(request.args.get("page"), default=1)
+    return render_template("history.html", **_history_page_context(page_value))
+
+@app.post("/history/clear")
+def history_clear():
+    history_store.clear_events()
+    return redirect(url_for("history"))
 
 
 @app.after_request
@@ -259,6 +507,51 @@ def api_predict():
     }
     return jsonify(response)
 
+
+
+def _batch_context(
+    *,
+    batch_error: str | None = None,
+    batch_status: str | None = None,
+    batch_issues: list[dict] | None = None,
+    batch_file_name: str = "",
+    batch_total_rows: int | None = None,
+    batch_valid_rows: int | None = None,
+):
+    return base_context(
+        review="",
+        error=None,
+        batch_error=batch_error,
+        batch_status=batch_status,
+        batch_issues=batch_issues or [],
+        batch_file_name=batch_file_name,
+        batch_total_rows=batch_total_rows,
+        batch_valid_rows=batch_valid_rows,
+    )
+
+
+
+def _persist_batch_rows(scored_rows: list[dict]) -> None:
+    for item in scored_rows:
+        try:
+            history_service.append_prediction_event(
+                review_text=item["review"],
+                label=item["sentiment_label"],
+                value=item["sentiment_value"],
+                confidence=item["confidence"],
+                source="batch",
+            )
+        except Exception as exc:
+            logger.warning("History persistence failed for batch row %s: %s", item, exc)
+
+
+
+def _store_batch_export(csv_payload: str, filename: str) -> str:
+    export_id = uuid4().hex
+    batch_export_cache[export_id] = {"content": csv_payload, "filename": filename}
+    while len(batch_export_cache) > MAX_BATCH_EXPORTS:
+        batch_export_cache.popitem(last=False)
+    return export_id
 
 @app.post("/batch/analyze")
 def batch_analyze_post():

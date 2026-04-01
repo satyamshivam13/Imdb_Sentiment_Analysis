@@ -148,7 +148,7 @@ class HistoryStore:
                     source,
                     created_at
                 FROM analysis_events
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, id DESC
                 LIMIT ? OFFSET ?
                 """,
                 (safe_limit, safe_offset),
@@ -162,3 +162,14 @@ class HistoryStore:
             )
             results.append(item)
         return results
+
+    def count_events(self) -> int:
+        with self._connect() as connection:
+            row = connection.execute("SELECT COUNT(*) AS total FROM analysis_events").fetchone()
+        return int(row["total"])
+
+    def clear_events(self) -> int:
+        with self._connect() as connection:
+            cursor = connection.execute("DELETE FROM analysis_events")
+            connection.commit()
+            return int(cursor.rowcount)
