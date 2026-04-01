@@ -38,6 +38,15 @@ class HistoryStore:
             )
             connection.commit()
 
+    @staticmethod
+    def _utc_iso(created_at: str | None = None) -> str:
+        if not created_at:
+            return datetime.now(timezone.utc).isoformat()
+        parsed = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat()
+
     def insert_event(
         self,
         review_text: str,
@@ -47,7 +56,7 @@ class HistoryStore:
         source: str,
         created_at: str | None = None,
     ) -> int:
-        created = created_at or datetime.now(timezone.utc).isoformat()
+        created = self._utc_iso(created_at)
         with self._connect() as connection:
             cursor = connection.execute(
                 """
@@ -125,6 +134,8 @@ class HistoryStore:
         ]
 
     def latest_events(self, limit: int = 50, offset: int = 0) -> list[dict]:
+        safe_limit = max(1, int(limit))
+        safe_offset = max(0, int(offset))
         with self._connect() as connection:
             rows = connection.execute(
                 """
@@ -140,6 +151,14 @@ class HistoryStore:
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
                 """,
-                (limit, offset),
+                (safe_limit, safe_offset),
             ).fetchall()
-        return [dict(row) for row in rows]
+        results = []
+        for row in rows:
+            item = dict(row)
+            item["sentiment_value"] = int(item["sentiment_value"])
+            item["confidence"] = (
+                float(item["confidence"]) if item["confidence"] is not None else None
+            )
+            results.append(item)
+        return results
