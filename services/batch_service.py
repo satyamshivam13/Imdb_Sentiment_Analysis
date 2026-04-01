@@ -202,3 +202,56 @@ class BatchService:
             "scored_rows": scored_rows,
             "issues": issues,
         }
+
+    def build_summary(
+        self, scored_rows: list[dict[str, Any]], invalid_rows: int | list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        invalid_count = (
+            len(invalid_rows) if isinstance(invalid_rows, list) else int(invalid_rows)
+        )
+        valid_count = len(scored_rows)
+        total_rows = valid_count + invalid_count
+        positive_count = sum(
+            1 for row in scored_rows if row.get("sentiment_label") == "Positive"
+        )
+        negative_count = sum(
+            1 for row in scored_rows if row.get("sentiment_label") == "Negative"
+        )
+
+        def pct(part: int, whole: int) -> float:
+            if whole <= 0:
+                return 0.0
+            return round((part / whole) * 100, 1)
+
+        return {
+            "total_rows": total_rows,
+            "valid_rows": valid_count,
+            "invalid_rows": invalid_count,
+            "positive_count": positive_count,
+            "negative_count": negative_count,
+            "positive_pct": pct(positive_count, valid_count),
+            "negative_pct": pct(negative_count, valid_count),
+        }
+
+    def build_enriched_csv(
+        self, original_headers: list[str], scored_rows: list[dict[str, Any]]
+    ) -> str:
+        export_headers = list(original_headers)
+        for extra in ("sentiment_label", "sentiment_value", "confidence"):
+            if extra not in export_headers:
+                export_headers.append(extra)
+
+        stream = StringIO()
+        writer = csv.DictWriter(stream, fieldnames=export_headers)
+        writer.writeheader()
+
+        for row in scored_rows:
+            original_row = dict(row.get("original_row", {}))
+            export_row = {header: original_row.get(header, "") for header in original_headers}
+            export_row["sentiment_label"] = row.get("sentiment_label", "")
+            export_row["sentiment_value"] = row.get("sentiment_value", "")
+            confidence = row.get("confidence")
+            export_row["confidence"] = "" if confidence is None else confidence
+            writer.writerow(export_row)
+
+        return stream.getvalue()

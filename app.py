@@ -1,8 +1,10 @@
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from collections import OrderedDict
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 from pathlib import Path
 import logging
 import os
 import pickle
+from uuid import uuid4
 
 from services import BatchService, HistoryService
 from storage import HistoryStore
@@ -17,6 +19,7 @@ HISTORY_DB_PATH = Path(
     os.getenv("HISTORY_DB_PATH", BASE_DIR / "data" / "history.db")
 ).resolve()
 ENABLE_SWAGGER = os.getenv("ENABLE_SWAGGER", "0") == "1"
+MAX_BATCH_EXPORTS = int(os.getenv("MAX_BATCH_EXPORTS", "20"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("imdb-sentiment-app")
@@ -65,6 +68,7 @@ except Exception as exc:
     logger.error("History schema init failed: %s", exc)
 history_service = HistoryService(history_store)
 batch_service = BatchService()
+batch_export_cache: OrderedDict[str, dict[str, str]] = OrderedDict()
 
 
 def ensure_model_loaded():
@@ -148,6 +152,14 @@ def _persist_batch_rows(scored_rows: list[dict]) -> None:
             )
         except Exception as exc:
             logger.warning("History persistence failed for batch row %s: %s", item, exc)
+
+
+def _store_batch_export(csv_payload: str, filename: str) -> str:
+    export_id = uuid4().hex
+    batch_export_cache[export_id] = {"content": csv_payload, "filename": filename}
+    while len(batch_export_cache) > MAX_BATCH_EXPORTS:
+        batch_export_cache.popitem(last=False)
+    return export_id
 
 
 @app.after_request
@@ -357,6 +369,27 @@ def api_batch_analyze():
 
     _persist_batch_rows(scored_rows)
     return jsonify(payload), 200
+
+
+@app.get("/batch/export/<export_id>")
+def batch_export(export_id: str):
+    export_payload = batch_export_cache.get(export_id)
+    if not export_payload:
+        if wants_json_response():
+            return jsonify({"error": "export_not_found"}), 404
+        return (
+            render_template(
+                "home.html",
+                **_batch_context(batch_error="Batch export is no longer available."),
+            ),
+            404,
+        )
+
+    response = Response(export_payload["content"], mimetype="text/csv")
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="{export_payload["filename"]}"'
+    )
+    return response
 
 
 @app.get("/health")
