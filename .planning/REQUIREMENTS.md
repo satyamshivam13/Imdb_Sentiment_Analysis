@@ -19,11 +19,11 @@
 
 ### Batch Analysis
 
-- [ ] **BATCH-01**: User can upload a CSV file containing review text for batch analysis.
-- [ ] **BATCH-02**: System validates uploaded CSV schema and returns actionable validation errors.
-- [ ] **BATCH-03**: System generates sentiment label and confidence for each valid review row.
-- [ ] **BATCH-04**: User can export analyzed batch results as downloadable CSV.
-- [ ] **BATCH-05**: User can view aggregate batch report metrics (positive/negative totals and percentages).
+- [x] **BATCH-01**: User can upload a CSV file containing review text for batch analysis.
+- [x] **BATCH-02**: System validates uploaded CSV schema and returns actionable validation errors.
+- [x] **BATCH-03**: System generates sentiment label and confidence for each valid review row.
+- [x] **BATCH-04**: User can export analyzed batch results as downloadable CSV.
+- [x] **BATCH-05**: User can view aggregate batch report metrics (positive/negative totals and percentages).
 
 ### Review History
 
@@ -69,11 +69,11 @@
 | METR-01 | Phase 4 | Pending |
 | METR-02 | Phase 4 | Pending |
 | METR-03 | Phase 4 | Pending |
-| BATCH-01 | Phase 2 | Pending |
-| BATCH-02 | Phase 2 | Pending |
-| BATCH-03 | Phase 2 | Pending |
-| BATCH-04 | Phase 2 | Pending |
-| BATCH-05 | Phase 2 | Pending |
+| BATCH-01 | Phase 2 | Complete |
+| BATCH-02 | Phase 2 | Complete |
+| BATCH-03 | Phase 2 | Complete |
+| BATCH-04 | Phase 2 | Complete |
+| BATCH-05 | Phase 2 | Complete |
 | HIST-01 | Phase 1 | Complete |
 | HIST-02 | Phase 5 | Pending |
 | HIST-03 | Phase 5 | Pending |
@@ -85,4 +85,4 @@
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after initial definition*
+*Last updated: 2026-04-02 after Phase 2 completion*

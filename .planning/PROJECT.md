@@ -17,6 +17,7 @@ Internal stakeholders can quickly understand sentiment trends and model quality 
 - [x] System exposes model readiness health check (`GET /health`) for runtime verification (existing)
 - [x] Results UI already displays classification and confidence context for a single review (existing)
 - [x] System persists analyzed review events (timestamp, sentiment, confidence) for analytics foundations, validated in Phase 1 (`storage/history_store.py`, `services/history_service.py`, `app.py`)
+- [x] System supports batch CSV upload, validation, row-level scoring, and enriched CSV export with summary reporting, validated in Phase 2 (`services/batch_service.py`, `app.py`, `templates/batch_result.html`)
 
 ### Active
 
@@ -54,14 +55,15 @@ Internal stakeholders can quickly understand sentiment trends and model quality 
 | Analytics product is the v1 core value | Demonstrates higher ML product maturity than single prediction pages | Active |
 | Primary user is internal/demo stakeholders | Existing artifacts indicate showcase/demo intent | Active |
 | v1 scope is balanced (4 feature tracks) | Balances ship speed and narrative completeness | Active |
-| Selected v1 features: Dashboard + Metrics + Batch CSV + Review History | Supports analytics storytelling and practical demos | In progress (Phase 1 complete) |
+| Selected v1 features: Dashboard + Metrics + Batch CSV + Review History | Supports analytics storytelling and practical demos | In progress (Phases 1-2 complete) |
 | Tech direction: Flask + lightweight JS charting | Delivers charts quickly without front-end architecture expansion | Active |
 | Authentication deferred to v2 | Keeps v1 focused on core product value | Accepted |
 
 ## Current State
 
 - Phase 1 complete: analytics data foundation implemented (persistent history store, service abstraction, and persistence wiring for web/API prediction routes).
-- Phase 2 is next: batch CSV analysis pipeline.
+- Phase 2 complete: batch CSV pipeline implemented (upload validation, mixed-result scoring, persistence with source `batch`, report view, enriched CSV export).
+- Phase 3 is next: dashboard visualization layer.
 
 ## Evolution
 
@@ -81,4 +83,4 @@ After each milestone:
 4. Update Context with latest architecture and delivery state.
 
 ---
-*Last updated: 2026-04-02 after Phase 1 completion*
+*Last updated: 2026-04-02 after Phase 2 completion*
