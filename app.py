@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 
+from services import HistoryService
 from storage import HistoryStore
 
 
@@ -62,6 +63,7 @@ try:
     history_store.init_schema()
 except Exception as exc:
     logger.error("History schema init failed: %s", exc)
+history_service = HistoryService(history_store)
 
 
 def ensure_model_loaded():
@@ -152,6 +154,16 @@ def predict_post():
         )
 
     result = predict_sentiment(review)
+    try:
+        history_service.append_prediction_event(
+            review_text=review,
+            label=result["label"],
+            value=result["value"],
+            confidence=result["confidence"],
+            source="single",
+        )
+    except Exception as exc:
+        logger.warning("History persistence failed for /predict: %s", exc)
     confidence_value = result["confidence"]
     if confidence_value is not None:
         confidence_pct = f"{confidence_value * 100:.1f}%"
