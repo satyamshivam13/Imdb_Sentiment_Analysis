@@ -100,7 +100,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: Reconcile REQUIREMENTS and PROJECT milestone state
+- [x] 06-01: Reconcile REQUIREMENTS and PROJECT milestone state
 
 ## Progress
 
