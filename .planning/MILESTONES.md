@@ -1,6 +1,6 @@
-# Milestones
+﻿# Milestones
 
-## v1.0 IMDb Sentiment Analytics v1 (Shipped: 2026-04-01)
+## v1.0 IMDb Sentiment Analytics v1 (Shipped: 2026-04-02)
 
 **Phases completed:** 6 phases, 14 plans, 21 tasks
 
