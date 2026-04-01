@@ -4,7 +4,7 @@ import logging
 import os
 import pickle
 
-from services import HistoryService
+from services import BatchService, HistoryService
 from storage import HistoryStore
 
 
@@ -64,6 +64,7 @@ try:
 except Exception as exc:
     logger.error("History schema init failed: %s", exc)
 history_service = HistoryService(history_store)
+batch_service = BatchService()
 
 
 def ensure_model_loaded():
@@ -112,6 +113,27 @@ def wants_json_response():
         return True
     best = request.accept_mimetypes.best
     return best == "application/json"
+
+
+def _batch_context(
+    *,
+    batch_error: str | None = None,
+    batch_status: str | None = None,
+    batch_issues: list[dict] | None = None,
+    batch_file_name: str = "",
+    batch_total_rows: int | None = None,
+    batch_valid_rows: int | None = None,
+):
+    return base_context(
+        review="",
+        error=None,
+        batch_error=batch_error,
+        batch_status=batch_status,
+        batch_issues=batch_issues or [],
+        batch_file_name=batch_file_name,
+        batch_total_rows=batch_total_rows,
+        batch_valid_rows=batch_valid_rows,
+    )
 
 
 @app.after_request
@@ -210,6 +232,92 @@ def api_predict():
         "confidence": result["confidence"],
     }
     return jsonify(response)
+
+
+@app.post("/batch/analyze")
+def batch_analyze_post():
+    uploaded_file = request.files.get("reviews_file")
+    parsed = batch_service.parse_csv_upload(uploaded_file)
+    parse_issues = parsed["issues"]
+    if parse_issues:
+        return (
+            render_template(
+                "home.html",
+                **_batch_context(
+                    batch_error="CSV upload validation failed.",
+                    batch_issues=parse_issues,
+                    batch_file_name=parsed["filename"],
+                ),
+            ),
+            400,
+        )
+
+    validation = batch_service.validate_rows(
+        parsed["rows"], app.config["MAX_REVIEW_CHARS"]
+    )
+    issues = validation["issues"]
+    valid_rows = validation["valid_rows"]
+
+    if issues:
+        return (
+            render_template(
+                "home.html",
+                **_batch_context(
+                    batch_error="CSV row validation failed. Fix highlighted rows and retry.",
+                    batch_issues=issues,
+                    batch_file_name=parsed["filename"],
+                    batch_total_rows=len(parsed["rows"]),
+                    batch_valid_rows=len(valid_rows),
+                ),
+            ),
+            400,
+        )
+
+    return render_template(
+        "home.html",
+        **_batch_context(
+            batch_status=f"CSV validated successfully: {len(valid_rows)} row(s) ready.",
+            batch_file_name=parsed["filename"],
+            batch_total_rows=len(parsed["rows"]),
+            batch_valid_rows=len(valid_rows),
+        ),
+    )
+
+
+@app.post("/api/batch/analyze")
+def api_batch_analyze():
+    uploaded_file = request.files.get("reviews_file")
+    parsed = batch_service.parse_csv_upload(uploaded_file)
+    parse_issues = parsed["issues"]
+    if parse_issues:
+        return (
+            jsonify(
+                {
+                    "status": "validation_error",
+                    "filename": parsed["filename"],
+                    "issues": parse_issues,
+                }
+            ),
+            400,
+        )
+
+    validation = batch_service.validate_rows(
+        parsed["rows"], app.config["MAX_REVIEW_CHARS"]
+    )
+    issues = validation["issues"]
+    valid_rows = validation["valid_rows"]
+
+    payload = {
+        "status": "validated",
+        "filename": parsed["filename"],
+        "total_rows": len(parsed["rows"]),
+        "valid_rows": len(valid_rows),
+        "issues": issues,
+    }
+    if issues:
+        payload["status"] = "validation_error"
+        return jsonify(payload), 400
+    return jsonify(payload), 200
 
 
 @app.get("/health")
