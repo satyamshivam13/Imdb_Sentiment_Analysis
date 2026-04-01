@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+      <main class="mx-auto grid max-w-6xl gap-10 px-6 pb-16 pt-12 lg:grid-cols-2">
+        <section class="flex flex-col justify-center gap-6">
+          <div class="fade-up">
+            <p
+              class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-slate-200"
+            >
+              Real-time Movie Mood
+            </p>
+          </div>
+          <div class="fade-up delay-1">
+            <h2
+              class="text-4xl font-display font-semibold leading-tight text-glow md:text-5xl"
+            >
+              Turn reviews into an instant sentiment snapshot.
+            </h2>
+          </div>
+          <div class="fade-up delay-2">
+            <p class="text-base text-slate-300 md:text-lg">
+              Paste a movie review and get a fast, clean read on the tone. This
+              demo is powered by a Naive Bayes model and a tuned bag-of-words
+              pipeline.
+            </p>
+          </div>
+          <div class="fade-up delay-3 flex flex-wrap gap-3">
+            <span
+              class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200"
+            >
+              Naive Bayes
+            </span>
+            <span
+              class="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200"
+            >
+              IMDB Reviews
+            </span>
+            <span
+              class="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200"
+            >
+              Flask API
+            </span>
+          </div>
+          <div class="fade-up delay-4 grid gap-3 text-sm text-slate-300">
+            <div class="flex items-center gap-3">
+              <span
+                class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]"
+              ></span>
+              Optimized for quick demos and live testing.
+            </div>
+            <div class="flex items-center gap-3">
+              <span
+                class="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.7)]"
+              ></span>
+              Includes a JSON API endpoint for integrations.
+            </div>
+          </div>
+        </section>
+
+        <section class="fade-up delay-2">
+          <div class="glass rounded-3xl p-6 md:p-8">
+            <div class="flex items-center justify-between">
+              <h3 class="font-display text-xl font-semibold">
+                Review Sentiment
+              </h3>
+              <span class="text-xs text-slate-400">
+                Max {{ max_chars }} chars
+              </span>
+            </div>
+
+            {% if error %}
+            <div
+              class="mt-4 rounded-2xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
+            >
+              {{ error }}
+            </div>
+            {% endif %}
+
+            <form
+              action="{{ url_for('predict_post') }}"
+              method="POST"
+              class="mt-5 grid gap-4"
+              id="review-form"
+            >
+              <label class="text-sm text-slate-300" for="review-input">
+                Paste your review
+              </label>
+              <textarea
+                id="review-input"
+                name="Reviews"
+                rows="6"
+                maxlength="{{ max_chars }}"
+                required
+                class="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+                placeholder="A smart, confident thriller with a final act that really lands..."
+              >{{ review or "" }}</textarea>
+
+              <div class="flex items-center justify-between text-xs text-slate-400">
+                <span id="char-count">0 / {{ max_chars }}</span>
+                <span>Auto-trimmed at {{ max_chars }} characters.</span>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-slate-400">
+                  Tip: Try a few sentences to get the best signal.
+                </p>
+                <button
+                  type="submit"
+                  id="submit-btn"
+                  class="button-gradient rounded-full bg-gradient-to-r from-ember via-amber-400 to-aura px-6 py-2 text-sm font-semibold text-midnight shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+                >
+                  <span class="btn-label">Analyze Sentiment</span>
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                </button>
+              </div>
+              <p class="text-xs text-slate-400" id="submit-status" aria-live="polite"></p>
+            </form>
+
+            <div class="mt-8 border-t border-white/10 pt-5">
+              <div class="flex items-center justify-between">
+                <h4 class="font-display text-lg font-semibold">Batch CSV Analysis</h4>
+                <span class="text-xs text-slate-400">Multi-review upload</span>
+              </div>
+
+              {% if batch_error %}
+              <div
+                class="mt-4 rounded-2xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
+              >
+                {{ batch_error }}
+              </div>
+              {% endif %}
+
+              {% if batch_status %}
+              <div
+                class="mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
+              >
+                {{ batch_status }}
+              </div>
+              {% endif %}
+
+              {% if batch_issues %}
+              <div class="mt-4 rounded-2xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+                <p class="font-semibold">Validation details:</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-100/90">
+                  {% for issue in batch_issues %}
+                  <li>Row {{ issue.row }} - {{ issue.field }}: {{ issue.reason }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <form
+                action="{{ url_for('batch_analyze_post') }}"
+                method="POST"
+                enctype="multipart/form-data"
+                class="mt-5 grid gap-4"
+                id="batch-form"
+              >
+                <label class="text-sm text-slate-300" for="batch-file">
+                  Upload CSV file
+                </label>
+                <input
+                  id="batch-file"
+                  name="reviews_file"
+                  type="file"
+                  accept=".csv"
+                  required
+                  class="w-full cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 file:mr-4 file:cursor-pointer file:rounded-full file:border-0 file:bg-cyan-300/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-cyan-100 focus:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+                />
+
+                <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                  <span id="batch-file-name">
+                    {% if batch_file_name %}{{ batch_file_name }}{% else %}No file selected{% endif %}
+                  </span>
+                  <button
+                    type="submit"
+                    id="batch-submit-btn"
+                    class="button-gradient rounded-full bg-gradient-to-r from-cyan-300 via-sky-300 to-emerald-300 px-6 py-2 text-sm font-semibold text-midnight shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+                  >
+                    <span class="btn-label">Analyze CSV Batch</span>
+                    <span class="btn-spinner" aria-hidden="true"></span>
+                  </button>
+                </div>
+                <p class="text-xs text-slate-400" id="batch-submit-status" aria-live="polite"></p>
+              </form>
+            </div>
+
+            <div class="mt-6 border-t border-white/10 pt-4 text-xs text-slate-400">
+              API ready: POST JSON to
+              <span class="rounded bg-white/10 px-2 py-1">/api/predict</span>
+              with <span class="rounded bg-white/10 px-2 py-1">{"review"}</span>.
+            </div>
+          </div>
+        </section>
+      </main>
+{% endblock %}
