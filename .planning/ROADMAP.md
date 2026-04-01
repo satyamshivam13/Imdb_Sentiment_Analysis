@@ -40,7 +40,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Build CSV upload and schema validation flow
+- [x] 02-01: Build CSV upload and schema validation flow
 - [ ] 02-02: Implement batch scoring pipeline with row-level outputs
 - [ ] 02-03: Add batch report summary and export endpoint/UI
 
