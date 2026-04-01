@@ -1,4 +1,4 @@
-# Roadmap: IMDb Sentiment Analytics Platform
+﻿# Roadmap: IMDb Sentiment Analytics Platform
 
 ## Overview
 
@@ -11,6 +11,7 @@ This roadmap evolves the current sentiment predictor into an analytics-focused p
 - [x] **Phase 3: Dashboard Visualization Layer** - Deliver stakeholder-facing sentiment distribution and trend dashboards. (completed 2026-04-02)
 - [x] **Phase 4: Model Metrics Observatory** - Expose evaluation metrics, confusion matrix, and model metadata. (completed 2026-04-02)
 - [x] **Phase 5: History Experience Hardening** - Finalize history browsing/clearing UX and reliability/performance polish. (completed 2026-04-02)
+- [ ] **Phase 6: Milestone Documentation Reconciliation** - Close audit-identified planning/documentation drift before archival. (planned 2026-04-02)
 
 ## Phase Details
 
@@ -87,17 +88,30 @@ Plans:
 - [x] 05-01: Build paginated history browse page and retrieval support
 - [x] 05-02: Add clear-history action and validation scaffolding
 
+### Phase 6: Milestone Documentation Reconciliation
+**Goal**: Reconcile milestone governance documents with implemented v1 reality so archival artifacts are accurate.
+**Depends on**: Phase 5
+**Requirements**: Documentation debt closure (no new product requirements)
+**Gap Closure**: Closes debt from .planning/v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+1. REQUIREMENTS traceability/checklists reflect implemented v1 completion state.
+2. PROJECT current-state narrative matches completed milestone outcomes.
+3. Milestone documentation is audit-consistent for archival.
+**Plans**: 1 plan
+
+Plans:
+- [ ] 06-01: Reconcile REQUIREMENTS and PROJECT milestone state
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Analytics Data Foundation | 3/3 | Complete    | 2026-04-01 |
-| 2. Batch CSV Analysis Pipeline | 3/3 | Complete    | 2026-04-01 |
+| 1. Analytics Data Foundation | 3/3 | Complete | 2026-04-01 |
+| 2. Batch CSV Analysis Pipeline | 3/3 | Complete | 2026-04-01 |
 | 3. Dashboard Visualization Layer | 3/3 | Complete | 2026-04-02 |
 | 4. Model Metrics Observatory | 2/2 | Complete | 2026-04-02 |
 | 5. History Experience Hardening | 2/2 | Complete | 2026-04-02 |
-
-
+| 6. Milestone Documentation Reconciliation | 0/1 | Planned | - |

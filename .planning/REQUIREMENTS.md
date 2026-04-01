@@ -1,4 +1,4 @@
-# Requirements: IMDb Sentiment Analytics Platform
+﻿# Requirements: IMDb Sentiment Analytics Platform
 
 **Defined:** 2026-04-02
 **Core Value:** Internal stakeholders can quickly understand sentiment trends and model quality from review data, not just single-review outputs.
@@ -83,6 +83,11 @@
 - Mapped to phases: 14
 - Unmapped: 0 ✓
 
+## Gap Closure Tracking
+
+- v1.0 milestone audit (.planning/v1.0-MILESTONE-AUDIT.md) reported no functional requirement gaps and flagged documentation debt.
+- Phase 6 (06-milestone-documentation-reconciliation) is planned to reconcile requirement traceability and project state documentation.
+
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 after Phase 2 completion*
+*Last updated: 2026-04-02 after milestone gap planning (Phase 6 added)*
