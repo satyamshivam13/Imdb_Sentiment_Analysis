@@ -45,7 +45,7 @@
       batchSubmitBtn.classList.add("is-loading");
       batchSubmitBtn.setAttribute("disabled", "disabled");
       if (batchSubmitStatus) {
-        batchSubmitStatus.textContent = "Validating CSV upload...";
+        batchSubmitStatus.textContent = "Analyzing batch and preparing report...";
       }
     });
   }

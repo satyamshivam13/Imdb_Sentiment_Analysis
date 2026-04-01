@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title_suffix %} - Batch Result{% endblock %}
+
+{% block content %}
+      <main class="mx-auto grid max-w-6xl gap-8 px-6 pb-16 pt-10 lg:grid-cols-2">
+        <section class="glass rounded-3xl p-6 md:p-8">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display text-2xl font-semibold">Batch Analysis Report</h2>
+            <span class="text-xs text-slate-400">{{ batch_file_name }}</span>
+          </div>
+
+          <div class="mt-6 grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Total Rows</p>
+              <p class="mt-1 text-xl font-semibold text-slate-100">{{ summary.total_rows }}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Valid Rows</p>
+              <p class="mt-1 text-xl font-semibold text-emerald-200">{{ summary.valid_rows }}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Invalid Rows</p>
+              <p class="mt-1 text-xl font-semibold text-amber-200">{{ invalid_rows }}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Positive / Negative</p>
+              <p class="mt-1 text-xl font-semibold text-slate-100">
+                {{ positive_count }} / {{ negative_count }}
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-4">
+            <p class="text-sm text-emerald-100">
+              Positive: <strong>{{ summary.positive_pct }}%</strong> |
+              Negative: <strong>{{ summary.negative_pct }}%</strong>
+            </p>
+          </div>
+
+          <div class="mt-6 flex flex-wrap gap-3">
+            <a
+              href="{{ url_for('batch_export', export_id=export_id) }}"
+              class="inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-400/10 px-5 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/20"
+            >
+              Download Enriched CSV
+            </a>
+            <a
+              href="{{ url_for('home') }}"
+              class="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/40 hover:bg-white/10"
+            >
+              Analyze another file
+            </a>
+          </div>
+        </section>
+
+        <section class="grid gap-6">
+          <div class="glass rounded-3xl p-6 md:p-8">
+            <h3 class="font-display text-xl font-semibold">Row-Level Findings</h3>
+            <div class="mt-4 space-y-2 text-sm text-slate-200">
+              {% for row in scored_rows[:8] %}
+              <div class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs uppercase tracking-[0.3em] text-slate-400">Row {{ row.row_index }}</span>
+                  <span class="text-xs font-semibold {% if row.sentiment_value == 1 %}text-emerald-200{% else %}text-rose-200{% endif %}">
+                    {{ row.sentiment_label }}
+                  </span>
+                </div>
+                <p class="mt-2 text-xs text-slate-300">{{ row.review }}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="glass rounded-3xl p-6 md:p-8">
+            <h3 class="font-display text-xl font-semibold">Validation Issues</h3>
+            {% if issues %}
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-amber-100">
+              {% for issue in issues %}
+              <li>Row {{ issue.row }} - {{ issue.field }}: {{ issue.reason }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="mt-4 text-sm text-slate-300">No validation issues in this batch.</p>
+            {% endif %}
+          </div>
+        </section>
+      </main>
+{% endblock %}

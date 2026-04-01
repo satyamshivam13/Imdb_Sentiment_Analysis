@@ -312,17 +312,23 @@ def batch_analyze_post():
         )
 
     _persist_batch_rows(scored_rows)
+    summary = batch_service.build_summary(scored_rows, issues)
+    export_filename = f"{Path(parsed['filename']).stem or 'batch'}-analyzed.csv"
+    export_content = batch_service.build_enriched_csv(parsed["headers"], scored_rows)
+    export_id = _store_batch_export(export_content, export_filename)
 
     return render_template(
-        "home.html",
-        **_batch_context(
-            batch_status=(
-                f"Batch analyzed successfully: {len(scored_rows)} row(s) scored."
-            ),
-            batch_issues=issues,
+        "batch_result.html",
+        **base_context(
+            summary=summary,
+            scored_rows=scored_rows,
+            issues=issues,
+            export_id=export_id,
+            export_filename=export_filename,
             batch_file_name=parsed["filename"],
-            batch_total_rows=len(parsed["rows"]),
-            batch_valid_rows=analyzed["valid_rows"],
+            positive_count=summary["positive_count"],
+            negative_count=summary["negative_count"],
+            invalid_rows=summary["invalid_rows"],
         ),
     )
 
@@ -368,6 +374,13 @@ def api_batch_analyze():
         return jsonify(payload), 400
 
     _persist_batch_rows(scored_rows)
+    summary = batch_service.build_summary(scored_rows, issues)
+    export_filename = f"{Path(parsed['filename']).stem or 'batch'}-analyzed.csv"
+    export_content = batch_service.build_enriched_csv(parsed["headers"], scored_rows)
+    export_id = _store_batch_export(export_content, export_filename)
+    payload["summary"] = summary
+    payload["export_id"] = export_id
+    payload["export_url"] = url_for("batch_export", export_id=export_id)
     return jsonify(payload), 200
 
 
