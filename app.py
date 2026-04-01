@@ -194,6 +194,16 @@ def api_predict():
         return jsonify({"error": error}), 400
 
     result = predict_sentiment(review)
+    try:
+        history_service.append_prediction_event(
+            review_text=review,
+            label=result["label"],
+            value=result["value"],
+            confidence=result["confidence"],
+            source="api",
+        )
+    except Exception as exc:
+        logger.warning("History persistence failed for /api/predict: %s", exc)
     response = {
         "label": result["label"],
         "value": result["value"],
