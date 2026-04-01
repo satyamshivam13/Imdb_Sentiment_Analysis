@@ -1,4 +1,4 @@
-﻿# Phase 2 Research: Batch CSV Analysis Pipeline
+# Phase 2 Research: Batch CSV Analysis Pipeline
 
 **Phase:** 2 - Batch CSV Analysis Pipeline
 **Date:** 2026-04-02

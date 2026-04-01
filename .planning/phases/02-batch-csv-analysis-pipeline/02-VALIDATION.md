@@ -1,4 +1,4 @@
-﻿---
+---
 phase: 02
 slug: batch-csv-analysis-pipeline
 status: draft
