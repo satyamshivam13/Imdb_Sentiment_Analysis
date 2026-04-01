@@ -1,0 +1,137 @@
+﻿{% extends "base.html" %}
+
+{% block title_suffix %} - Dashboard{% endblock %}
+
+{% block content %}
+{% set total_count = dashboard_distribution.total or 0 %}
+{% set positive_count = dashboard_distribution.positive.count if dashboard_distribution.positive else 0 %}
+{% set negative_count = dashboard_distribution.negative.count if dashboard_distribution.negative else 0 %}
+<main class="mx-auto max-w-6xl px-6 pb-16 pt-10">
+  <section class="glass fade-up rounded-[2rem] p-6 md:p-8">
+    <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-[0.45em] text-cyan-200/70">Analytics Dashboard</p>
+        <h2 class="mt-2 font-display text-3xl font-semibold md:text-4xl">Sentiment distribution and trend</h2>
+        <p class="mt-3 max-w-3xl text-sm text-slate-300 md:text-base">
+          Track how movie review sentiment shifts across your latest analyses.
+        </p>
+      </div>
+      <a href="{{ url_for('home') }}" class="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/40 hover:bg-white/10">
+        Analyze another review
+      </a>
+    </div>
+
+    {% if dashboard_empty %}
+    <div class="mt-6 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100" data-empty-state>
+      Try a broader date range, or add more reviews through the prediction and batch flows.
+    </div>
+    {% endif %}
+
+    <form id="dashboard-filters" class="dashboard-controls mt-6 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-4 md:p-5" method="get" action="{{ url_for('dashboard') }}">
+      <div>
+        <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Quick ranges</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          {% for key, label in dashboard_presets %}
+          <button type="submit" name="range" value="{{ key }}" class="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/10 {% if dashboard_range_key == key %}bg-cyan-400/15 border-cyan-300/40 text-cyan-100{% endif %}">{{ label }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="grid gap-4 md:grid-cols-[repeat(3,minmax(0,1fr))_auto] md:items-end">
+        <label class="grid gap-2 text-sm text-slate-300">
+          Start date
+          <input type="date" name="start" value="{{ dashboard_start_date }}" class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-slate-100 focus:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-300/20" />
+        </label>
+        <label class="grid gap-2 text-sm text-slate-300">
+          End date
+          <input type="date" name="end" value="{{ dashboard_end_date }}" class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-slate-100 focus:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-300/20" />
+        </label>
+        <input type="hidden" name="range" value="custom" />
+        <button type="submit" class="rounded-full bg-gradient-to-r from-ember via-amber-400 to-aura px-6 py-3 text-sm font-semibold text-midnight shadow-lg transition hover:-translate-y-0.5">
+          Apply
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="dashboard-kpis mt-6 grid gap-4 md:grid-cols-3">
+    <article class="glass fade-up delay-1 rounded-[1.75rem] p-5">
+      <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Total</p>
+      <p class="mt-2 text-3xl font-semibold text-slate-100">{{ total_count }}</p>
+      <p class="mt-2 text-sm text-slate-300">All persisted review events in the selected range.</p>
+    </article>
+    <article class="glass fade-up delay-2 rounded-[1.75rem] p-5">
+      <p class="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Positive</p>
+      <p class="mt-2 text-3xl font-semibold text-emerald-200">{{ positive_count }}</p>
+      <p class="mt-2 text-sm text-slate-300">{{ dashboard_distribution.positive.percentage if dashboard_distribution.positive else 0 }}% of the selected total.</p>
+    </article>
+    <article class="glass fade-up delay-3 rounded-[1.75rem] p-5">
+      <p class="text-xs uppercase tracking-[0.35em] text-rose-200/70">Negative</p>
+      <p class="mt-2 text-3xl font-semibold text-rose-200">{{ negative_count }}</p>
+      <p class="mt-2 text-sm text-slate-300">{{ dashboard_distribution.negative.percentage if dashboard_distribution.negative else 0 }}% of the selected total.</p>
+    </article>
+  </section>
+
+  <section class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+    <article class="glass fade-up delay-2 rounded-[2rem] p-6">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Distribution</p>
+          <h3 class="mt-2 font-display text-2xl font-semibold">Sentiment Distribution</h3>
+        </div>
+        <div class="text-right text-sm text-slate-300">
+          <div>{{ positive_count }} positive</div>
+          <div>{{ negative_count }} negative</div>
+        </div>
+      </div>
+      <div class="mt-6 grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+        <div class="relative mx-auto h-[220px] w-[220px] max-w-full">
+          <canvas id="distribution-chart" aria-label="Sentiment distribution chart" role="img"></canvas>
+        </div>
+        <div class="grid gap-3 text-sm">
+          <div class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-semibold text-emerald-100">Positive</span>
+              <span class="text-emerald-100">{{ dashboard_distribution.positive.percentage if dashboard_distribution.positive else 0 }}%</span>
+            </div>
+            <p class="mt-1 text-slate-200">{{ positive_count }} reviews</p>
+          </div>
+          <div class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-semibold text-rose-100">Negative</span>
+              <span class="text-rose-100">{{ dashboard_distribution.negative.percentage if dashboard_distribution.negative else 0 }}%</span>
+            </div>
+            <p class="mt-1 text-slate-200">{{ negative_count }} reviews</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="glass fade-up delay-3 rounded-[2rem] p-6">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Trend</p>
+          <h3 class="mt-2 font-display text-2xl font-semibold">Sentiment Trend</h3>
+        </div>
+        <div class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {{ dashboard_start_date or '30-day window' }} to {{ dashboard_end_date or 'today' }}
+        </div>
+      </div>
+      <div class="mt-6 h-[320px]">
+        <canvas id="trend-chart" aria-label="Sentiment trend chart" role="img"></canvas>
+      </div>
+    </article>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.dashboardConfig = {
+    distributionUrl: "{{ url_for('dashboard_distribution') }}{{ dashboard_query_string }}",
+    trendUrl: "{{ url_for('dashboard_trend') }}{{ dashboard_query_string }}",
+    empty: {{ 'true' if dashboard_empty else 'false' }}
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+{% endblock %}
