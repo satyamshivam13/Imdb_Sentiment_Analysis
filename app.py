@@ -136,6 +136,20 @@ def _batch_context(
     )
 
 
+def _persist_batch_rows(scored_rows: list[dict]) -> None:
+    for item in scored_rows:
+        try:
+            history_service.append_prediction_event(
+                review_text=item["review"],
+                label=item["sentiment_label"],
+                value=item["sentiment_value"],
+                confidence=item["confidence"],
+                source="batch",
+            )
+        except Exception as exc:
+            logger.warning("History persistence failed for batch row %s: %s", item, exc)
+
+
 @app.after_request
 def add_security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -236,6 +250,18 @@ def api_predict():
 
 @app.post("/batch/analyze")
 def batch_analyze_post():
+    _, _, current_error = ensure_model_loaded()
+    if current_error:
+        return (
+            render_template(
+                "home.html",
+                **_batch_context(
+                    batch_error="The model is not ready for batch analysis.",
+                ),
+            ),
+            503,
+        )
+
     uploaded_file = request.files.get("reviews_file")
     parsed = batch_service.parse_csv_upload(uploaded_file)
     parse_issues = parsed["issues"]
@@ -252,13 +278,13 @@ def batch_analyze_post():
             400,
         )
 
-    validation = batch_service.validate_rows(
+    analyzed = batch_service.analyze_rows(
         parsed["rows"], app.config["MAX_REVIEW_CHARS"]
     )
-    issues = validation["issues"]
-    valid_rows = validation["valid_rows"]
+    issues = analyzed["issues"]
+    scored_rows = analyzed["scored_rows"]
 
-    if issues:
+    if not scored_rows:
         return (
             render_template(
                 "home.html",
@@ -267,25 +293,34 @@ def batch_analyze_post():
                     batch_issues=issues,
                     batch_file_name=parsed["filename"],
                     batch_total_rows=len(parsed["rows"]),
-                    batch_valid_rows=len(valid_rows),
+                    batch_valid_rows=analyzed["valid_rows"],
                 ),
             ),
             400,
         )
 
+    _persist_batch_rows(scored_rows)
+
     return render_template(
         "home.html",
         **_batch_context(
-            batch_status=f"CSV validated successfully: {len(valid_rows)} row(s) ready.",
+            batch_status=(
+                f"Batch analyzed successfully: {len(scored_rows)} row(s) scored."
+            ),
+            batch_issues=issues,
             batch_file_name=parsed["filename"],
             batch_total_rows=len(parsed["rows"]),
-            batch_valid_rows=len(valid_rows),
+            batch_valid_rows=analyzed["valid_rows"],
         ),
     )
 
 
 @app.post("/api/batch/analyze")
 def api_batch_analyze():
+    _, _, current_error = ensure_model_loaded()
+    if current_error:
+        return jsonify({"error": "model_unavailable"}), 503
+
     uploaded_file = request.files.get("reviews_file")
     parsed = batch_service.parse_csv_upload(uploaded_file)
     parse_issues = parsed["issues"]
@@ -301,22 +336,26 @@ def api_batch_analyze():
             400,
         )
 
-    validation = batch_service.validate_rows(
+    analyzed = batch_service.analyze_rows(
         parsed["rows"], app.config["MAX_REVIEW_CHARS"]
     )
-    issues = validation["issues"]
-    valid_rows = validation["valid_rows"]
+    issues = analyzed["issues"]
+    scored_rows = analyzed["scored_rows"]
 
     payload = {
-        "status": "validated",
+        "status": "analyzed",
         "filename": parsed["filename"],
         "total_rows": len(parsed["rows"]),
-        "valid_rows": len(valid_rows),
+        "valid_rows": analyzed["valid_rows"],
+        "invalid_rows": analyzed["invalid_rows"],
+        "scored_rows": scored_rows,
         "issues": issues,
     }
-    if issues:
+    if not scored_rows:
         payload["status"] = "validation_error"
         return jsonify(payload), 400
+
+    _persist_batch_rows(scored_rows)
     return jsonify(payload), 200
 
 
